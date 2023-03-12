@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "imageRegistry": {
+      "value": "justanothercloudblog"
+    },
+    "imageName": {
+      "value": "azure-agent"
+    },
+    "imageBuildTag": {
+      "value": "latest"
+    },
+    "deploymentPipelineName": {
+      "value": "pipelinetest"
+    },
+    "containerAmount": {
+      "value": 1
+    },
+    "azpUrl": {
+      "value": "https://dev.azure.com/stanframbach"
+    },
+    "azpToken": {
+      "value": "token"
+    },
+    "azpPool": {
+      "value": "Private Deploy Pipeline"
+    },
+    "location": {
+      "value": "westeurope"
+    },
+    "vnetAddressPrefix": {
+      "value": "10.0.0.0/24"
+    },
+    "subnetAddressPrefix": {
+      "value": "10.0.0.0/27"
+    }
+  }
+}

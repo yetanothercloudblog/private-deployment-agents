@@ -1,0 +1,105 @@
+# Deploy and test JustAnotherCloudBlog
+
+name: Azure.ContainerRegistry.Justanothercloudblog
+
+trigger:
+  batch: true
+  branches:
+    include:
+    - 'main'
+
+schedules:
+- cron: "0 12 * * 0"
+  displayName: Weekly Update
+  branches:
+    include:
+    - main
+  always: true
+
+variables:
+- group: subscription-mpn
+- group: azure.docker.pipelineagents
+- group: azure.docker.pipelineagents.secrets
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+- stage: BuildDockerContainer
+  displayName: Build Docker Container
+  jobs:
+  - job: BuildDockerJob
+    displayName: Build Docker Container in ACR
+    steps:
+    - task: ContainerBuild@0
+      inputs:
+        dockerRegistryServiceConnection: "$(dockerServiceConnection)" 
+        repository: "$(imageName)"
+        Dockerfile: "Docker/Dockerfile"
+        tags: |
+          $(Build.BuildId)
+          latest
+        buildContext: Docker
+- stage: RunTests
+  displayName: Run Automated Tests
+  jobs: 
+  - job: ValidateDeployment
+    displayName: Validate Deployment
+    steps:
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: Validate ARM template deployment
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: $(serviceConnection)
+        subscriptionId: $(subscriptionId)
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: 'rg-registry'
+        location: 'West Europe'
+        templateLocation: 'Linked artifact'
+        csmFile: 'Infrastructure/main.bicep'
+        overrideParameters: >-
+         -imageRegistry "$(imageRegistry)"
+         -imageName "$(imageName)"
+         -imageBuildTag "$(imageBuildTag)"
+         -deploymentPipelineName "$(deploymentPipelineName)"
+         -containerAmount "$(containerAmount)"
+         -azpUrl "$(azpUrl)"
+         -azpToken "$(azpToken)"
+         -azpPool "$(azpPool)"
+         -location "$(location)"
+         -vnetAddressPrefix "$(vnetAddressPrefix)"
+         -subnetAddressPrefix "$(subnetAddressPrefix)"
+        deploymentMode: 'Validation'
+        deploymentName: deploy-ci-val-$(Build.BuildId)
+
+- stage: Deploy
+  displayName: Deploy to Azure
+  jobs:
+  - job: DeployInfrastructure
+    displayName: Deploy Infrastructure to Azure
+    steps:
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: Validate ARM template deployment
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: $(serviceConnection)
+        subscriptionId: $(subscriptionId)
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: 'rg-registry'
+        location: 'West Europe'
+        templateLocation: 'Linked artifact'
+        csmFile: 'Infrastructure/main.bicep'
+        overrideParameters: >-
+          -imageRegistry "$(imageRegistry)"
+          -imageName "$(imageName)"
+          -imageBuildTag "$(imageBuildTag)"
+          -deploymentPipelineName "$(deploymentPipelineName)"
+          -containerAmount "$(containerAmount)"
+          -azpUrl "$(azpUrl)"
+          -azpToken "$(azpToken)"
+          -azpPool "$(azpPool)"
+          -location "$(location)"
+          -vnetAddressPrefix "$(vnetAddressPrefix)"
+          -subnetAddressPrefix "$(subnetAddressPrefix)"
+        deploymentMode: 'Incremental'
+        deploymentName: deploy-ci-$(Build.BuildId)
